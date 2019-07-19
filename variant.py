@@ -4,7 +4,7 @@ SEED = None
 VARIANT = {
     'env_name': 'CartPolecons-v0',
     'algorithm_name': 'SCSAC',
-    'additional_description': '-Test',
+    'additional_description': '-0.01',
     'evaluate': False,
     'train':True,
     'evaluation_frequency': 2048,

@@ -104,7 +104,7 @@ SCALE_lambda_MIN_MAX = (0, 50)
 
 
 
-SELF_LEARN=False
+SELF_LEARN=True
 class SCSAC(object):
     def __init__(self,
                  a_dim,
@@ -557,7 +557,7 @@ def train(variant):
             wd = wasserstein_distance(mu_now, [[sigma_now]], mu_bad, sigma_bad)  #
             # print(wd)
 
-            l_r = max(0.1 / wd - 1, 0)
+            l_r = max(0.01 / wd - 1, 0)
 
             if not SELF_LEARN:
                 l_r = info['l_rewards']

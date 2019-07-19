@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="94a88117-502f-4592-ad64-e6e322291e6e" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/SCSAC/SCSAC_V1.py" beforeDir="false" afterPath="$PROJECT_DIR$/SCSAC/SCSAC_V1.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/log/CartPolecons-v0/SCSAC-Test/0/progress.csv" beforeDir="false" afterPath="$PROJECT_DIR$/log/CartPolecons-v0/SCSAC-Test/0/progress.csv" afterDir="false" />
     </list>
@@ -14,7 +13,7 @@
   </component>
   <component name="CoverageDataManager">
     <SUITE FILE_PATH="coverage/xx$main_for_sac.coverage" NAME="main_for_sac Coverage Results" MODIFIED="1558691909280" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/SCLSAC$main_for_sac.coverage" NAME="main_for_sac Coverage Results" MODIFIED="1563515693970" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SCLSAC$main_for_sac.coverage" NAME="main_for_sac Coverage Results" MODIFIED="1563516581620" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/Guarantee_Learning_Control$main_for_sac.coverage" NAME="main_for_sac Coverage Results" MODIFIED="1563502500127" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="FileEditorManager">
@@ -22,12 +21,22 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/SCSAC/SCSAC_V1.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="247">
-              <caret line="656" column="67" lean-forward="true" selection-start-line="656" selection-start-column="67" selection-end-line="656" selection-end-column="67" />
+            <state relative-caret-position="150">
+              <caret line="105" lean-forward="true" selection-start-line="105" selection-end-line="105" />
               <folding>
+                <element signature="e#32#3969#0" />
                 <element signature="e#4529#22879#0" />
                 <element signature="e#22923#23129#0" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/ENV/env/classic_control/ENV_V0.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-816">
+              <caret line="176" column="26" lean-forward="true" selection-start-line="176" selection-start-column="26" selection-end-line="176" selection-end-column="26" />
             </state>
           </provider>
         </entry>
@@ -134,6 +143,7 @@
         <option value="$PROJECT_DIR$/LAC/LAC_V1.py" />
         <option value="$PROJECT_DIR$/my_plottrer.py" />
         <option value="$PROJECT_DIR$/variant.py" />
+        <option value="$PROJECT_DIR$/ENV/env/classic_control/ENV_V0.py" />
         <option value="$PROJECT_DIR$/SCSAC/SCSAC_V1.py" />
       </list>
     </option>
@@ -225,16 +235,15 @@
       <workItem from="1558689082445" duration="2098000" />
       <workItem from="1563443445660" duration="14000" />
       <workItem from="1563443467990" duration="7503000" />
-      <workItem from="1563504723986" duration="3425000" />
+      <workItem from="1563504723986" duration="4156000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="13195000" />
+    <option name="totallyTimeSpent" value="13926000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="23" width="1680" height="947" extended-state="6" />
-    <editor active="true" />
     <layout>
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.26495728" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
@@ -413,11 +422,19 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/ENV/env/classic_control/ENV_V0.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-816">
+          <caret line="176" column="26" lean-forward="true" selection-start-line="176" selection-start-column="26" selection-end-line="176" selection-end-column="26" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/SCSAC/SCSAC_V1.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="247">
-          <caret line="656" column="67" lean-forward="true" selection-start-line="656" selection-start-column="67" selection-end-line="656" selection-end-column="67" />
+        <state relative-caret-position="150">
+          <caret line="105" lean-forward="true" selection-start-line="105" selection-end-line="105" />
           <folding>
+            <element signature="e#32#3969#0" />
             <element signature="e#4529#22879#0" />
             <element signature="e#22923#23129#0" />
           </folding>

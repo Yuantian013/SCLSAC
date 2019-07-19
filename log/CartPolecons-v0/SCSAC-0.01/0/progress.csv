@@ -1,0 +1,2 @@
+alpha,alpha3,batch_size,critic1_error,critic2_error,distribution_loss,end_cost,entropy,eplenmean,eplrewmean,eprewmean,labda,lr_a,lr_c,lr_l,lyapunov_error,policy_loss,target_entropy,tau,total_timesteps,violation_times
+0.9692298,1.0,256,2358.3674,2525.7217,nan,0.0,-1.0757626,98.9,2.9229048203764405,-3076.0057482589714,1.0,9.967483333333334e-05,0.00029902449999999996,0.00029902449999999996,0.017704446,182.89459,-1,0.005,2048,5.3
