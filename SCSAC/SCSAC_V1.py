@@ -534,7 +534,8 @@ def train(variant):
             break
 
         s = env.reset()
-
+        s_bad_for_autoencoder=[s.tolist()]
+        s_normal_for_autoencoder=[s.tolist()]
         for j in range(max_ep_steps):
             if Render:
                 env.render()
@@ -556,7 +557,7 @@ def train(variant):
             wd = wasserstein_distance(mu_now, [[sigma_now]], mu_bad, sigma_bad)  #
             # print(wd)
 
-            l_r = max(0.01 / wd - 1, 0)
+            l_r = max(0.1 / wd - 1, 0)
 
             if not SELF_LEARN:
                 l_r = info['l_rewards']
@@ -568,11 +569,12 @@ def train(variant):
             violation_of_constraint = info['violation_of_constraint']
             # 储存s,a和s_next,reward用于DDPG的学习
             policy.store_transition(s, a, r, l_r, terminal, s_)
-
+            s_normal_for_autoencoder.append(s_.tolist())
             # 如果状态接近边缘 就存储到边缘memory里
             # if policy.use_lyapunov is True and np.abs(s[0]) > env.cons_pos:  # or np.abs(s[2]) > env.theta_threshold_radians*0.8
             if policy.use_lyapunov is True and judge_safety_func(s_, r, done, info):  # or np.abs(s[2]) > env.theta_threshold_radians*0.8
                 s_aec = aec.encode([s_])
+                s_bad_for_autoencoder.append(s_.tolist())
                 policy.store_edge_transition(s, a, r, l_r, terminal, s_,s_aec)
 
             # Learn
@@ -657,6 +659,15 @@ def train(variant):
                 lr_c_now = lr_c * frac  # learning rate for critic
                 lr_l_now = lr_l * frac  # learning rate for critic
 
+                s_normal_for_autoencoder=s_normal_for_autoencoder[0:np.shape(s_bad_for_autoencoder)[0]]
+
+                s_for_autoencoder=np.concatenate((s_bad_for_autoencoder,s_normal_for_autoencoder))
+
+                c = aec.learn(s_for_autoencoder)
+                if c < auto_low:
+                    auto_low = c
+                    print(c)
+                    aec.save_result('autoencoder')
                 break
     policy.save_result(log_path)
     print('Running time: ', time.time() - t1)
