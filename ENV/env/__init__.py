@@ -44,8 +44,6 @@ register(
     entry_point='ENV.env.classic_control:CarEnv',
     max_episode_steps=600,
 )
-
-
 # mujoco
 
 register(
@@ -75,18 +73,4 @@ register(
 )
 
 
-register(
-    id='roundabout-v2',
-    entry_point='ENV.env.classic_control:RoundaboutEnv',
-    max_episode_steps=22,
-)
-register(
-    id='highway-v1',
-    entry_point='ENV.env.classic_control:HighwayEnv',
-    max_episode_steps=20,
-)
-register(
-    id='twoway-v1',
-    entry_point='ENV.env.classic_control:TwoWayEnv',
-    max_episode_steps=100,
-)
+

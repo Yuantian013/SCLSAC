@@ -1,22 +1,4 @@
 
-import tensorflow as tf
-import numpy as np
-import time
-from SAC.squash_bijector import SquashBijector
-import tensorflow_probability as tfp
-from collections import OrderedDict, deque
-import os
-from copy import deepcopy
-from variant import VARIANT, get_env_from_name, get_policy, get_train
-from .utils import get_evaluation_rollouts, evaluate_rollouts, evaluate_training_rollouts
-import logger
-from safety_constraints import get_safety_constraint_func
-from scipy.stats import wasserstein_distance
-import math
-SCALE_DIAG_MIN_MAX = (-20, 2)
-SCALE_lambda_MIN_MAX = (0, 50)
-
-
 class autoencoder(object):
     def __init__(self, ):
         ###############################  Model parameters  ####################################
@@ -103,14 +85,37 @@ class autoencoder(object):
     def load_result(self):
         self.saver.restore(self.sess, "autoencoder/model.ckpt")  # 1 0.1 0.5 0.001
 
+
+import tensorflow as tf
+import numpy as np
+import time
+from SAC.squash_bijector import SquashBijector
+import tensorflow_probability as tfp
+from collections import OrderedDict, deque
+import os
+from copy import deepcopy
+from variant import VARIANT, get_env_from_name, get_policy, get_train
+from .utils import get_evaluation_rollouts, evaluate_rollouts, evaluate_training_rollouts
+import logger
+from safety_constraints import get_safety_constraint_func
+
+SCALE_DIAG_MIN_MAX = (-20, 2)
+SCALE_lambda_MIN_MAX = (0, 50)
+
+
+
+SELF_LEARN=False
 class SCSAC(object):
     def __init__(self,
                  a_dim,
                  s_dim,
+
                  variant,
 
                  action_prior = 'uniform',
                  ):
+
+
 
         ###############################  Model parameters  ####################################
         self.memory_capacity = variant['memory_capacity']
@@ -135,9 +140,7 @@ class SCSAC(object):
 
         self.S = tf.placeholder(tf.float32, [None, s_dim], 's')
         self.S_ = tf.placeholder(tf.float32, [None, s_dim], 's_')
-        # self.s_a=tf.placeholder(tf.float32, [None, s_dim+a_dim], 's_a')
-        self.s_a = tf.placeholder(tf.float32, [None, 1], 's_a')
-
+        self.s_aec = tf.placeholder(tf.float32, [None, 1], 's_aec')
         self.cons_S = tf.placeholder(tf.float32, [None, s_dim], 's')
         self.cons_S_ = tf.placeholder(tf.float32, [None, s_dim], 's_')
         self.a_input = tf.placeholder(tf.float32, [None, a_dim], 'a_input')
@@ -159,8 +162,9 @@ class SCSAC(object):
         self.alpha = tf.exp(log_alpha)
 
         self.a, self.deterministic_a, self.a_dist = self._build_a(self.S, )  # 这个网络用于及时更新参数
-        # self.distribution=self._build_d()
         self.distribution = self._build_d()
+        self.mu = self.distribution.loc
+        self.sigma = self.distribution.covariance()
         self.q1 = self._build_c(self.S, self.a_input, 'critic1')  # 这个网络是用于及时更新参数
         self.q2 = self._build_c(self.S, self.a_input, 'critic2')  # 这个网络是用于及时更新参数
         self.l = self._build_l(self.S, self.a_input)   # lyapunov 网络
@@ -185,14 +189,15 @@ class SCSAC(object):
 
         # 这个网络不及时更新参数, 用于预测 Critic 的 Q_target 中的 action
         a_, _, a_dist_ = self._build_a(self.S_, reuse=True, custom_getter=ema_getter)  # replaced target parameters
+
         cons_a, _, cons_a_dist = self._build_a(self.cons_S, reuse=True)
         cons_a_, _, cons_a_dist_ = self._build_a(self.cons_S_, reuse=True)
         self.cons_a_input = tf.placeholder(tf.float32, [None, a_dim], 'cons_a_input')
-
+        # self.cons_a_input_ = tf.placeholder(tf.float32, [None, a_dim, 'cons_a_input_'])
+        # self.log_pis = log_pis = self.a_dist.log_prob(self.a)
         self.log_pis = log_pis = self.a_dist.log_prob(self.a)
         self.prob = tf.reduce_mean(self.a_dist.prob(self.a))
-        self.prob_dis=self.distribution.prob(self.s_a)
-        self.log_prob_dis = self.distribution.log_prob(self.s_a)
+
         # 这个网络不及时更新参数, 用于给出 Actor 更新参数时的 Gradient ascent 强度
         q1_ = self._build_c(self.S_, a_,'critic1', reuse=True, custom_getter=ema_getter)
         q2_ = self._build_c(self.S_, a_, 'critic2', reuse=True, custom_getter=ema_getter)
@@ -244,7 +249,6 @@ class SCSAC(object):
         pre_grads_and_var = list(zip(pre_grads, pre_var))
 
         self.atrain = self.trainer.apply_gradients(grads_and_var) #以learning_rate去训练，方向是minimize loss，调整列表参数，用adam
-        self.distrain=self.trainer.apply_gradients(grads_and_var) #以learning_rate去训练，方向是minimize loss，调整列表参数，用adam
         self.a_pretrain = self.trainer.apply_gradients(pre_grads_and_var)
         next_log_pis = a_dist_.log_prob(a_)
         with tf.control_dependencies(target_update):  # soft replacement happened at here
@@ -256,37 +260,31 @@ class SCSAC(object):
             else:
                 l_target = self.l_R
 
-            # self.distribution_loss = -tf.reduce_mean(self.distribution.log_prob(self.s_a))
+            self.distribution_loss = -tf.reduce_mean(self.distribution.prob(self.s_aec))
 
-            self.distribution_loss = -tf.reduce_mean(self.distribution.prob(self.s_a))
-            self.mu=self.distribution.loc
-            self.sigma=self.distribution.covariance()
+
+            self.d_trainer = tf.train.AdamOptimizer(self.LR_C)
             self.c1_trainer = tf.train.AdamOptimizer(self.LR_C)
             self.c2_trainer = tf.train.AdamOptimizer(self.LR_C)
-            self.d_trainer = tf.train.AdamOptimizer(self.LR_C)
             self.l_trainer = tf.train.AdamOptimizer(self.LR_C)
-
             self.td_error1 = tf.losses.mean_squared_error(labels=q1_target, predictions=self.q1)
             self.td_error2 = tf.losses.mean_squared_error(labels=q2_target, predictions=self.q2)
             self.l_error = tf.losses.mean_squared_error(labels=l_target, predictions=self.l)
             c1_grads_and_var = self.c1_trainer.compute_gradients(self.td_error1, c1_params)
             c2_grads_and_var = self.c2_trainer.compute_gradients(self.td_error2, c2_params)
-            d_grads_and_var = self.d_trainer.compute_gradients(self.distribution_loss, d_params)
             l_grads_and_var = self.l_trainer.compute_gradients(self.l_error, l_params)
+            d_grads_and_var = self.d_trainer.compute_gradients(self.distribution_loss, d_params)
 
             c1_grads, c1_var = zip(*c1_grads_and_var)
             c2_grads, c2_var = zip(*c2_grads_and_var)
-            d_grads, d_var = zip(*d_grads_and_var)
             l_grads, l_var = zip(*l_grads_and_var)
-            # if self.max_grad_norm is not None:
-            #     # Clip the gradients (normalize)
-            #     c1_grads, _ = tf.clip_by_global_norm(c1_grads, self.max_grad_norm)
-            #     c2_grads, _ = tf.clip_by_global_norm(c2_grads, self.max_grad_norm)
-            #     l_grads, _ = tf.clip_by_global_norm(l_grads, self.max_grad_norm)
+            d_grads, d_var = zip(*d_grads_and_var)
+
             c1_grads_and_var = list(zip(c1_grads, c1_var))
             c2_grads_and_var = list(zip(c2_grads, c2_var))
-            d_grads_and_var = list(zip(d_grads, d_var))
             l_grads_and_var = list(zip(l_grads, l_var))
+            d_grads_and_var = list(zip(d_grads, d_var))
+
             self.ctrain1 = self.c1_trainer.apply_gradients(c1_grads_and_var)
             self.ctrain2 = self.c2_trainer.apply_gradients(c2_grads_and_var)
             self.ltrain = self.l_trainer.apply_gradients(l_grads_and_var)
@@ -294,16 +292,14 @@ class SCSAC(object):
 
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver()
-        self.opt = [ self.ctrain1, self.ctrain2,]
-        self.diag_names = ['labda', 'alpha', 'critic1_error','critic2_error', 'lyapunov_error', 'entropy', 'policy_loss', 'distribution_loss']
+        self.opt = [ self.ctrain1, self.ctrain2, ]
+        self.diag_names = ['labda', 'alpha', 'critic1_error','critic2_error','lyapunov_error', 'entropy', 'policy_loss','distribution_loss']
         self.diagnotics = [self.labda, self.alpha, self.td_error1, self.td_error2, self.l_error, tf.reduce_mean(-self.log_pis)]
 
         if self.adaptive_alpha is True:
             self.opt.append(self.alpha_train)
         if self.use_lyapunov is True:
             self.opt.extend([self.ltrain, self.lambda_train])
-
-
 
 
     def choose_action(self, s, evaluation = False):
@@ -313,7 +309,9 @@ class SCSAC(object):
             return self.sess.run(self.a, {self.S: s[np.newaxis, :]})[0]
 
     def get_distribution(self):
-        return self.sess.run(self.mu)[0],self.sess.run(self.sigma)[0]
+        return self.sess.run(self.mu)[0], self.sess.run(self.sigma)[0]
+
+
     def learn(self, LR_A, LR_C, LR_L):
         if self.pointer>=self.memory_capacity:
             indices = np.random.choice(self.memory_capacity, size=self.batch_size)
@@ -334,7 +332,6 @@ class SCSAC(object):
             # 边缘的 s a s_ l_r
             if self.cons_pointer <= self.batch_size:
                 opt_list = self.opt[:-1] + [self.a_pretrain]
-
                 diagnotics = self.diagnotics + [self.a_preloss]
             else:
                 if self.cons_pointer >= self.cons_memory_capacity:
@@ -345,23 +342,21 @@ class SCSAC(object):
                 bt = self.cons_memory[indices, :]
                 cons_bs = bt[:, :self.s_dim]
                 cons_ba = bt[:, self.s_dim: self.s_dim + self.a_dim]
-                cons_bs_ = bt[:, -self.s_dim-1:-1]
-                cons_blr = bt[:, -self.s_dim - 3: -self.s_dim - 2]
-                cons_bs_a = bt[:,  -1:]
+                cons_bs_ = bt[:, self.s_dim + self.a_dim+3:2*self.s_dim + self.a_dim+3]
+                cons_blr = bt[:, self.s_dim + self.a_dim+1:  self.s_dim + self.a_dim+2]
+                cons_bsaec= bt[:, 2*self.s_dim + self.a_dim+3:  2*self.s_dim + self.a_dim+4]
 
                 feed_dict.update({self.cons_a_input: cons_ba, self.cons_S: cons_bs, self.cons_S_: cons_bs_,
-                                  self.cons_l_R: cons_blr,self.s_a:cons_bs_a})
-                opt_list = self.opt + [self.atrain] + [self.dtrain]
-                diagnotics = self.diagnotics + [self.a_loss] +[self.distribution_loss]
+                                  self.cons_l_R: cons_blr,self.s_aec:cons_bsaec})
 
+                opt_list = self.opt + [self.atrain]   + [self.dtrain]
+                diagnotics = self.diagnotics + [self.a_loss] + [self.distribution_loss]
         else:
             opt_list = self.opt + [self.atrain]
             diagnotics = self.diagnotics + [ self.a_loss]
 
 
         self.sess.run(opt_list, feed_dict)
-
-
         diagnotics = self.sess.run(diagnotics, feed_dict)
 
         return diagnotics
@@ -394,8 +389,8 @@ class SCSAC(object):
             base_distribution = tfp.distributions.MultivariateNormalDiag(loc=tf.zeros(self.a_dim), scale_diag=tf.ones(self.a_dim))
             epsilon = base_distribution.sample(batch_size)
             ## Construct the feedforward action
-            net_0 = tf.layers.dense(s, 64, activation=tf.nn.relu, name='l1', trainable=trainable)#原始是30
-            net_1 = tf.layers.dense(net_0,64, activation=tf.nn.relu, name='l4', trainable=trainable)  # 原始是30
+            net_0 = tf.layers.dense(s, 256, activation=tf.nn.relu, name='l1', trainable=trainable)#原始是30
+            net_1 = tf.layers.dense(net_0, 256, activation=tf.nn.relu, name='l4', trainable=trainable)  # 原始是30
             mu = tf.layers.dense(net_1, self.a_dim, activation= None, name='a', trainable=trainable)
             log_sigma = tf.layers.dense(net_1, self.a_dim, None, trainable=trainable)
             log_sigma = tf.clip_by_value(log_sigma, *SCALE_DIAG_MIN_MAX)
@@ -421,6 +416,9 @@ class SCSAC(object):
 
 
         return clipped_a, clipped_mu, distribution
+
+
+
     #critic模块
     def _build_c(self, s, a, name ='Critic', reuse=None, custom_getter=None):
         trainable = True if reuse is None else False
@@ -444,22 +442,21 @@ class SCSAC(object):
             net_1 = tf.layers.dense(net_0, 256, activation=tf.nn.relu, name='l2', trainable=trainable)  # 原始是30
             return tf.layers.dense(net_1, 1, trainable=trainable)  # Q(s,a)
 
-    def _build_d(self,name='Distribution',reuse=None, custom_getter=None):
+    def _build_d(self, name='Distribution', reuse=None, custom_getter=None):
         trainable = True if reuse is None else False
         with tf.variable_scope(name, reuse=reuse, custom_getter=custom_getter):
             # x_a = tf.get_variable('x_a',[1, self.s_dim+self.a_dim] , trainable=trainable)
-            # x_ade = tf.get_variable('x_a', initializer=tf.constant([[0.5]], dtype=tf.float32),trainable=trainable)
-            x_ade = tf.get_variable('x_a',[1, 1] , trainable=trainable)
+            x_ade = tf.get_variable('x_a', initializer=tf.constant([[0.5]], dtype=tf.float32), trainable=trainable)
+            # x_ade = tf.get_variable('x_a',[1, 1] , trainable=trainable)
             sig = tf.get_variable('sig', [1, 1], trainable=trainable)
-            distribution=tfp.distributions.MultivariateNormalDiag(loc=x_ade, scale_diag=sig)
-
+            distribution = tfp.distributions.MultivariateNormalDiag(loc=x_ade, scale_diag=sig)
             return distribution
+
 
     def save_result(self, path):
 
         save_path = self.saver.save(self.sess, path+"/model.ckpt")
         print("Save to path: ", save_path)
-
 def wasserstein_distance(m1,o1,m2,o2):
     o1=np.array(o1)
     o2=np.array(o2)
@@ -467,10 +464,9 @@ def wasserstein_distance(m1,o1,m2,o2):
 
     dis_part2 = np.trace(o1 + o2 - 2 * np.sqrt(np.dot(np.dot(np.sqrt(o2), o1), np.sqrt(o2))))
     return dis_part1+dis_part2
-
 def train(variant):
-    auto_low=0.1
-    aec=autoencoder()
+    auto_low = 0.0001
+    aec = autoencoder()
     aec.load_result()
     env_name = variant['env_name']
     env = get_env_from_name(env_name)
@@ -507,14 +503,9 @@ def train(variant):
     logger.logkv('alpha3', policy_params['alpha3'])
     logger.logkv('batch_size', policy_params['batch_size'])
     s_dim = env.observation_space.shape[0]
-    if 'roundabout' or 'highway' or 'two' in env_name :
-        a_dim = 1
-        a_upperbound = 4
-        a_lowerbound = 0
-    else:
-        a_dim = env.action_space.shape[0]
-        a_upperbound = env.action_space.high
-        a_lowerbound = env.action_space.low
+    a_dim = env.action_space.shape[0]
+    a_upperbound = env.action_space.high
+    a_lowerbound = env.action_space.low
     policy = policy_build_fn(a_dim, s_dim, policy_params)
     logger.logkv('target_entropy', policy.target_entropy)
     # For analyse
@@ -529,10 +520,7 @@ def train(variant):
     global_step = 0
     last_training_paths = deque(maxlen=store_last_n_paths)
     training_started = False
-    total_step=0
-    j=0
     for i in range(max_episodes):
-
 
         ep_reward = 0
         l_r = 0
@@ -546,50 +534,45 @@ def train(variant):
             break
 
         s = env.reset()
-        total_step=total_step+j
-        s_for_autoencoder=[]
+
         for j in range(max_ep_steps):
             if Render:
                 env.render()
             a = policy.choose_action(s)
-            if 'roundabout' or 'highway' or 'two' in env_name:
-                action_raw=a_lowerbound + (a + 1.) * (a_upperbound - a_lowerbound) / 2
-                action=round(action_raw[0])
-                # action=3
+            action = a_lowerbound + (a + 1.) * (a_upperbound - a_lowerbound) / 2
 
-            else:
-                action = a_lowerbound + (a + 1.) * (a_upperbound - a_lowerbound) / 2
             # Run in simulator
-
             s_, r, done, info = env.step(action)
             if training_started:
                 global_step += 1
-            mu_bad,sigma_bad=policy.get_distribution()
 
+            mu_bad, sigma_bad = policy.get_distribution()
             # mu_now=np.concatenate((s,a))
-            mu_now =aec.encode([s_])
+            mu_now = aec.encode([s_])
 
             # sigma_now=np.eye(s_dim+a_dim)*0.01
             sigma_now = 0
             # print(mu_now,[[sigma_now]],mu_bad,sigma_bad)
-            wd=wasserstein_distance(mu_now,[[sigma_now]],mu_bad,sigma_bad)#
+            wd = wasserstein_distance(mu_now, [[sigma_now]], mu_bad, sigma_bad)  #
             # print(wd)
-            l_r = max(0.005/wd -1,0)
+
+            l_r = max(0.01 / wd - 1, 0)
+
+            if not SELF_LEARN:
+                l_r = info['l_rewards']
 
             if j == max_ep_steps - 1:
                 done = True
             terminal = 1. if done else 0.
-            s_for_autoencoder.append(s_)
 
             violation_of_constraint = info['violation_of_constraint']
             # 储存s,a和s_next,reward用于DDPG的学习
             policy.store_transition(s, a, r, l_r, terminal, s_)
-            # print(s, a, r, l_r, terminal, s_)
+
             # 如果状态接近边缘 就存储到边缘memory里
             # if policy.use_lyapunov is True and np.abs(s[0]) > env.cons_pos:  # or np.abs(s[2]) > env.theta_threshold_radians*0.8
             if policy.use_lyapunov is True and judge_safety_func(s_, r, done, info):  # or np.abs(s[2]) > env.theta_threshold_radians*0.8
-                s_aec=aec.encode([s_])
-
+                s_aec = aec.encode([s_])
                 policy.store_edge_transition(s, a, r, l_r, terminal, s_,s_aec)
 
             # Learn
@@ -611,7 +594,7 @@ def train(variant):
                 current_path['rewards'].append(r)
                 current_path['l_rewards'].append(l_r)
                 current_path['violation'].append(violation_of_constraint)
-                [current_path[key].append(value) for key,value in zip(policy.diag_names[:len(train_diagnotic)], train_diagnotic)]
+                [current_path[key].append(value) for key,value in zip(policy.diag_names, train_diagnotic)]
 
             if training_started and global_step % evaluation_frequency == 0 and global_step > 0:
                 if evaluation_env is not None:
@@ -655,8 +638,8 @@ def train(variant):
                           'alpha:', round(training_diagnotic['alpha'], 6),
                           'lambda:', round(training_diagnotic['labda'], 6),
                           'entropy:', round(training_diagnotic['entropy'], 6),
-                          'distribution_loss',training_diagnotic['distribution_loss'],
-                          'mu',mu_bad)
+                          'distribution_loss', training_diagnotic['distribution_loss']
+                          )
                           # 'max_grad:', round(training_diagnotic['max_grad'], 6)
                 logger.dumpkvs()
             # 状态更新
@@ -665,7 +648,6 @@ def train(variant):
 
             # OUTPUT TRAINING INFORMATION AND LEARNING RATE DECAY
             if done:
-                # print(done)
                 if training_started:
                     last_training_paths.appendleft(current_path)
                 ewma_step[0, i + 1] = ewma_p * ewma_step[0, i] + (1 - ewma_p) * j
@@ -674,11 +656,7 @@ def train(variant):
                 lr_a_now = lr_a * frac  # learning rate for actor
                 lr_c_now = lr_c * frac  # learning rate for critic
                 lr_l_now = lr_l * frac  # learning rate for critic
-                c=aec.learn(s_for_autoencoder)
-                if c<auto_low:
-                    auto_low=c
-                    print(c)
-                    aec.save_result('autoencoder')
+
                 break
     policy.save_result(log_path)
     print('Running time: ', time.time() - t1)

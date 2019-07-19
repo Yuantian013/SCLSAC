@@ -105,7 +105,7 @@ class LAC(object):
         self.l_  = self._build_l(self.S_, lya_a_, reuse=True)
         # lyapunov constraint
 
-        self.l_derta = tf.reduce_mean(self.l_ - self.l + alpha3 * self.R) #前项后项的差值
+        self.l_derta = tf.reduce_mean(self.l_ - self.l + alpha3 * self.R)
 
         labda_loss = -tf.reduce_mean(log_labda * self.l_derta)
         alpha_loss = -tf.reduce_mean(log_alpha * tf.stop_gradient(log_pis + self.target_entropy))
@@ -165,6 +165,8 @@ class LAC(object):
             return self.sess.run(self.deterministic_a, {self.S: s[np.newaxis, :]})[0]
         else:
             return self.sess.run(self.a, {self.S: s[np.newaxis, :]})[0]
+
+
 
 
 

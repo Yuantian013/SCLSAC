@@ -357,8 +357,6 @@ class QuadrotorEnv(gym.Env):
         plt.draw()
         plt.pause(1)
         plt.close(1)
-
-
 def stateToQd(x):
     # Converts qd struct used in hardware to x vector used in simulation
     # x is 1 x 13 vector of state variables [pos vel quat omega]
@@ -405,6 +403,18 @@ def RPYtoRot_ZXY(phi, theta, psi):
 
 
 def RotToRPY_ZXY(R):
+    # RotToRPY_ZXY Extract Roll, Pitch, Yaw from a world-to-body Rotation Matrix
+    # The rotation matrix in this function is world to body [bRw] you will
+    # need to transpose the matrix if you have a body to world [wRb] such
+    # that [wP] = [wRb] * [bP], where [bP] is a point in the body frame and
+    # [wP] is a point in the world frame
+    # bRw = [ cos(psi)*cos(theta) - sin(phi)*sin(psi)*sin(theta),
+    #           cos(theta)*sin(psi) + cos(psi)*sin(phi)*sin(theta),
+    #          -cos(phi)*sin(theta)]
+    #         [-cos(phi)*sin(psi), cos(phi)*cos(psi), sin(phi)]
+    #         [ cos(psi)*sin(theta) + cos(theta)*sin(phi)*sin(psi),
+    #            sin(psi)*sin(theta) - cos(psi)*cos(theta)*sin(phi),
+    #            cos(phi)*cos(theta)]
 
     phi = math.asin(R[1, 2])
     psi = math.atan2(-R[1, 0] / math.cos(phi), R[1, 1] / math.cos(phi))
@@ -539,8 +549,10 @@ def trajectory(name, t):
 
 def Circle_Task(state, target_dist):
     altitude_reward = 1 / (abs(state[2] - 1) + 1)
-
-
+    # if state[2]<=0.25:
+    #     contact_loss=10
+    # else:
+    #     contact_loss=-1
     x, y = state[0], state[1]
     dx, dy = state[3], state[4]
     # print(state)

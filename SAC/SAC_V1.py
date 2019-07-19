@@ -11,13 +11,10 @@ from variant import VARIANT, get_env_from_name, get_policy, get_train
 from .utils import get_evaluation_rollouts, evaluate_rollouts, evaluate_training_rollouts
 import logger
 from safety_constraints import get_safety_constraint_func
-import scipy.io as sio
-import numpy as np
 
 SCALE_DIAG_MIN_MAX = (-20, 2)
 SCALE_lambda_MIN_MAX = (0, 50)
-from sklearn import preprocessing
-import scipy.io as scio
+
 class SAC_with_lyapunov(object):
     def __init__(self,
                  a_dim,
@@ -348,7 +345,6 @@ class SAC_with_lyapunov(object):
 
 
 def train(variant):
-    s_save=[]
     env_name = variant['env_name']
     env = get_env_from_name(env_name)
     if variant['evaluate'] is True:
@@ -384,14 +380,9 @@ def train(variant):
     logger.logkv('alpha3', policy_params['alpha3'])
     logger.logkv('batch_size', policy_params['batch_size'])
     s_dim = env.observation_space.shape[0]
-    if 'roundabout' or 'highway' or 'two' in env_name :
-        a_dim = 1
-        a_upperbound = 4
-        a_lowerbound = 0
-    else:
-        a_dim = env.action_space.shape[0]
-        a_upperbound = env.action_space.high
-        a_lowerbound = env.action_space.low
+    a_dim = env.action_space.shape[0]
+    a_upperbound = env.action_space.high
+    a_lowerbound = env.action_space.low
     policy = policy_build_fn(a_dim, s_dim, policy_params)
     logger.logkv('target_entropy', policy.target_entropy)
     # For analyse
@@ -406,8 +397,6 @@ def train(variant):
     global_step = 0
     last_training_paths = deque(maxlen=store_last_n_paths)
     training_started = False
-    total_step=0
-    j=0
     for i in range(max_episodes):
 
         ep_reward = 0
@@ -422,26 +411,18 @@ def train(variant):
             break
 
         s = env.reset()
-        total_step=total_step+j
 
         for j in range(max_ep_steps):
             if Render:
                 env.render()
             a = policy.choose_action(s)
-            if 'roundabout' or 'highway' or 'two' in env_name:
-                action_raw=a_lowerbound + (a + 1.) * (a_upperbound - a_lowerbound) / 2
-                action=round(action_raw[0])
-                # action=3
+            action = a_lowerbound + (a + 1.) * (a_upperbound - a_lowerbound) / 2
 
-            else:
-                action = a_lowerbound + (a + 1.) * (a_upperbound - a_lowerbound) / 2
             # Run in simulator
-
             s_, r, done, info = env.step(action)
             if training_started:
                 global_step += 1
             l_r = info['l_rewards']
-
             if j == max_ep_steps - 1:
                 done = True
             terminal = 1. if done else 0.
@@ -449,13 +430,10 @@ def train(variant):
             violation_of_constraint = info['violation_of_constraint']
             # 储存s,a和s_next,reward用于DDPG的学习
             policy.store_transition(s, a, r, l_r, terminal, s_)
-            # s_save.append(s_)
-            # sio.savemat('data_all.mat', {'s': s_save, })
+
             # 如果状态接近边缘 就存储到边缘memory里
             # if policy.use_lyapunov is True and np.abs(s[0]) > env.cons_pos:  # or np.abs(s[2]) > env.theta_threshold_radians*0.8
             if policy.use_lyapunov is True and judge_safety_func(s_, r, done, info):  # or np.abs(s[2]) > env.theta_threshold_radians*0.8
-                # s_save.append(s_)
-                # sio.savemat('data.mat', {'s': s_save,})
                 policy.store_edge_transition(s, a, r, l_r, terminal, s_)
 
             # Learn
@@ -529,7 +507,6 @@ def train(variant):
 
             # OUTPUT TRAINING INFORMATION AND LEARNING RATE DECAY
             if done:
-                # print(done)
                 if training_started:
                     last_training_paths.appendleft(current_path)
                 ewma_step[0, i + 1] = ewma_p * ewma_step[0, i] + (1 - ewma_p) * j

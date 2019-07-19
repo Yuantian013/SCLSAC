@@ -3,18 +3,6 @@ import datetime
 SEED = None
 VARIANT = {
     'env_name': 'CartPolecons-v0',
-    'algorithm_name': 'SAC_lyapunov',
-    'additional_description': '-Test',
-    'evaluate': False,
-    'train':True,
-    'evaluation_frequency': 2048,
-    'num_of_paths': 1,
-    'num_of_trials': 5,
-    'store_last_n_paths': 10,
-    'start_of_trial': 0,
-}
-VARIANT = {
-    'env_name': 'CartPolecons-v0',
     'algorithm_name': 'SCSAC',
     'additional_description': '-Test',
     'evaluate': False,
@@ -38,11 +26,10 @@ VARIANT = {
 #     'store_lastCartPolecost-v0_n_paths': 10,
 #     'start_of_trial': 0,
 # }
-
 VARIANT['log_path']='/'.join(['./log', VARIANT['env_name'], VARIANT['algorithm_name'] + VARIANT['additional_description']])
 ENV_PARAMS = {
     'CartPolecons-v0': {
-        'max_ep_steps': 250,
+        'max_ep_steps': 500,
         'max_global_steps': int(6e5),
         'max_episodes': int(1e5),
         'eval_render': True,},
@@ -89,24 +76,8 @@ ENV_PARAMS = {
         'max_global_steps': int(5e5),
         'max_episodes': int(1e6),
         'eval_render': False, },
-    'roundabout-v2': {
-        'max_ep_steps': 22,
-        'max_global_steps': int(5e5),
-        'max_episodes': int(1e6),
-        'eval_render': False, },
-    'highway-v1': {
-        'max_ep_steps': 20,
-        'max_global_steps': int(5e5),
-        'max_episodes': int(1e6),
-        'eval_render': True, },
-    'twoway-v1': {
-        'max_ep_steps': 100,
-        'max_global_steps': int(5e5),
-        'max_episodes': int(1e6),
-        'eval_render': True, },
+
      }
-
-
 ALG_PARAMS = {
     'SAC_lyapunov': {
         'memory_capacity': int(1e6),
@@ -147,7 +118,7 @@ ALG_PARAMS = {
         'use_lyapunov': True,
         'adaptive_alpha': True,
         'target_entropy': None,
-        'approx_value':False,
+        'approx_value':True,
         'max_grad_norm': None,
         },
     'SAC': {
@@ -308,12 +279,6 @@ def get_env_from_name(name):
         env = env.unwrapped
         env.modify_action_scale = False
         env.use_cost = True
-    elif name == 'roundabout-v2':
-        env = gym.make('roundabout-v2')
-    elif name == 'highway-v1':
-        env = gym.make('highway-v1')
-    elif name == ' twoway-v1':
-        env = gym.make('twoway-v1')
     elif name == 'Carcost-v0':
         from ENV.env.classic_control.car_env import CarEnv
         env = CarEnv()
@@ -333,12 +298,12 @@ def get_policy(name):
     if name == 'SAC'or name == 'SAC_lyapunov':
         from SAC.SAC_V1 import SAC_with_lyapunov
         build_fn = SAC_with_lyapunov
+    elif name == 'SCSAC':
+        from SCSAC.SCSAC_V1 import SCSAC
+        build_fn=SCSAC
     elif name=='SSAC':
         from SSAC.SSAC_V1 import SSAC
         build_fn = SSAC
-    elif name=='SCSAC':
-        from SCSAC.SCSAC_V1 import SCSAC
-        build_fn = SCSAC
     elif 'LAC' in name or 'SAC_cost' in name:
         from LAC.LAC_V1 import LAC
         build_fn = LAC
@@ -354,10 +319,10 @@ def get_policy(name):
 def get_train(name):
     if name == 'SAC'or name == 'SAC_lyapunov':
         from SAC.SAC_V1 import train
+    elif name=='SCSAC':
+        from SCSAC.SCSAC_V1 import train
     elif name=='SSAC':
         from SSAC.SSAC_V1 import train
-    elif name == 'SCSAC':
-        from SCSAC.SCSAC_V1 import train
     elif 'LAC' in name or 'SAC_cost' in name:
         from LAC.LAC_V1 import train
     elif 'CPO' in name or 'PDO' in name:

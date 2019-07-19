@@ -9,7 +9,6 @@ if __name__ == '__main__':
     root_dir = VARIANT['log_path']
     if VARIANT['train']:
         for i in range(VARIANT['start_of_trial'], VARIANT['start_of_trial']+VARIANT['num_of_trials']):
-            print(VARIANT)
             VARIANT['log_path'] = root_dir +'/'+ str(i)
             train = get_train(VARIANT['algorithm_name'])
             train(VARIANT)

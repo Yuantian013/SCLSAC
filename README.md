@@ -17,7 +17,7 @@ conda activate test
 ```
 
 ### MuJoCo
-Some of the baselines examples use [MuJoCo](http://www.mujoco.org) (multi-joint dynamics in contact) physics simulator, which is proprietary and requires binaries and a license (temporary 30-day license can be obtained from [www.mujoco.org](http://www.mujoco.org)). Instructions on setting up MuJoCo can be found [here](https://github.com/openai/mujoco-py)
+Some of the experiments use [MuJoCo](http://www.mujoco.org) (multi-joint dynamics in contact) physics simulator, which is proprietary and requires binaries and a license (temporary 30-day license can be obtained from [www.mujoco.org](http://www.mujoco.org)). Instructions on setting up MuJoCo can be found [here](https://github.com/openai/mujoco-py)
 
 # Installation Environment
 
@@ -113,3 +113,11 @@ VARIANT = {
     'start_of_trial': 0,
 }
 ```
+ ## Reference
+
+[1] [Reinforcement-learning-with-tensorflow](https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow)
+
+[2] [Baselines](https://github.com/openai/baselines)
+
+[3] [Rllab](https://github.com/rll/rllab)
+
