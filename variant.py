@@ -1,10 +1,22 @@
 import gym
 import datetime
 SEED = None
+# VARIANT = {
+#     'env_name': 'CartPolecons-v0',
+#     'algorithm_name': 'SAC_lyapunov',
+#     'additional_description': '-log-0.001',
+#     'evaluate': False,
+#     'train':True,
+#     'evaluation_frequency': 2048,
+#     'num_of_paths': 1,
+#     'num_of_trials': 5,
+#     'store_last_n_paths': 10,
+#     'start_of_trial': 0,
+# }
 VARIANT = {
     'env_name': 'CartPolecons-v0',
     'algorithm_name': 'SCSAC',
-    'additional_description': '-0.01',
+    'additional_description': '-log-0.001',
     'evaluate': False,
     'train':True,
     'evaluation_frequency': 2048,
@@ -15,21 +27,21 @@ VARIANT = {
 }
 # VARIANT = {
 #     'env_name': 'CartPolecost-v0',
-#     # 'algorithm_name': 'LAC',
-#     'algorithm_name': 'SAC_cost',
+#     'algorithm_name': 'LAC',
+#     # 'algorithm_name': 'SAC_cost',
 #     'additional_description': '-value-perturb',
 #     'evaluate': False,
-#     'train':False,
+#     'train':True,
 #     'evaluation_frequency': 2048,
 #     'num_of_paths': 1,
-#     'num_of_trials': 500,
-#     'store_lastCartPolecost-v0_n_paths': 10,
+#     'num_of_trials': 5,
+#     'store_last_n_paths': 10,
 #     'start_of_trial': 0,
 # }
 VARIANT['log_path']='/'.join(['./log', VARIANT['env_name'], VARIANT['algorithm_name'] + VARIANT['additional_description']])
 ENV_PARAMS = {
     'CartPolecons-v0': {
-        'max_ep_steps': 500,
+        'max_ep_steps': 2048,
         'max_global_steps': int(6e5),
         'max_episodes': int(1e5),
         'eval_render': True,},

@@ -11,6 +11,10 @@ from variant import VARIANT, get_env_from_name, get_policy, get_train
 from .utils import get_evaluation_rollouts, evaluate_rollouts, evaluate_training_rollouts
 import logger
 from safety_constraints import get_safety_constraint_func
+import scipy.io as sio
+import numpy as np
+
+
 
 SCALE_DIAG_MIN_MAX = (-20, 2)
 SCALE_lambda_MIN_MAX = (0, 50)
@@ -345,6 +349,7 @@ class SAC_with_lyapunov(object):
 
 
 def train(variant):
+    s_save = []
     env_name = variant['env_name']
     env = get_env_from_name(env_name)
     if variant['evaluate'] is True:
@@ -430,7 +435,8 @@ def train(variant):
             violation_of_constraint = info['violation_of_constraint']
             # 储存s,a和s_next,reward用于DDPG的学习
             policy.store_transition(s, a, r, l_r, terminal, s_)
-
+            s_save.append(s_)
+            sio.savemat('data_all.mat', {'s': s_save, })
             # 如果状态接近边缘 就存储到边缘memory里
             # if policy.use_lyapunov is True and np.abs(s[0]) > env.cons_pos:  # or np.abs(s[2]) > env.theta_threshold_radians*0.8
             if policy.use_lyapunov is True and judge_safety_func(s_, r, done, info):  # or np.abs(s[2]) > env.theta_threshold_radians*0.8

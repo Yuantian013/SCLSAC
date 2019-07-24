@@ -1,17 +1,122 @@
 
-class autoencoder(object):
+# class autoencoder(object):
+#     def __init__(self, ):
+#         ###############################  Model parameters  ####################################
+#
+#         self.S = tf.placeholder(tf.float32, [None, 4], 's')
+#         self.encoder_op = self.encoder(self.S)
+#         self.decoder_op = self.decoder(self.encoder_op)
+#         self.y_pred = self.decoder_op
+#         # Targets (Labels) are the input data.
+#         self.y_true = self.S
+#
+#         self.cost = tf.reduce_mean(tf.pow(self.y_true - self.y_pred, 2))
+#         self.optimizer = tf.train.AdamOptimizer(0.0001).minimize(self.cost)
+#
+#         self.sess = tf.Session()
+#         self.sess.run(tf.global_variables_initializer())
+#         self.saver = tf.train.Saver()
+#         self.opt = [self.optimizer]
+#
+#     def learn(self, batch_xs):
+#         _, c = self.sess.run([self.optimizer, self.cost], feed_dict={self.S: batch_xs})
+#         return c
+#
+#     # critic模块
+#     def encoder(self, s, name='Encoder', reuse=None, custom_getter=None):
+#         trainable = True if reuse is None else False
+#         with tf.variable_scope(name, reuse=reuse, custom_getter=custom_getter):
+#             n_input = 4
+#             n_hidden_1 = 16
+#             n_hidden_2 = 8
+#             n_hidden_3 = 4
+#             n_hidden_4 = 1
+#
+#             h1 = tf.get_variable('h1', [n_input, n_hidden_1], trainable=trainable)
+#             b1 = tf.get_variable('b1', [n_hidden_1], trainable=trainable)
+#             h2 = tf.get_variable('h2', [n_hidden_1, n_hidden_2], trainable=trainable)
+#             b2 = tf.get_variable('b2', [n_hidden_2], trainable=trainable)
+#             h3 = tf.get_variable('h3', [n_hidden_2, n_hidden_3], trainable=trainable)
+#             b3 = tf.get_variable('b3', [n_hidden_3], trainable=trainable)
+#             h4 = tf.get_variable('h4', [n_hidden_3, n_hidden_4], trainable=trainable)
+#             b4 = tf.get_variable('b4', [n_hidden_4], trainable=trainable)
+#
+#             layer_1 = tf.nn.sigmoid(tf.add(tf.matmul(s,h1),b1))
+#             layer_2 = tf.nn.sigmoid(tf.add(tf.matmul(layer_1, h2),b2))
+#             layer_3 = tf.nn.sigmoid(tf.add(tf.matmul(layer_2, h3),b3))
+#             layer_4 = tf.nn.sigmoid(tf.add(tf.matmul(layer_3, h4),b4))
+#             return layer_4
+#
+#     def decoder(self, encoder_op, name='Decoder', reuse=None, custom_getter=None):
+#         trainable = True if reuse is None else False
+#         with tf.variable_scope(name, reuse=reuse, custom_getter=custom_getter):
+#             n_input = 4
+#             n_hidden_1 = 16
+#             n_hidden_2 = 8
+#             n_hidden_3 = 4
+#             n_hidden_4 = 1
+#             h1 = tf.get_variable('h1', [n_hidden_4, n_hidden_3], trainable=trainable)
+#             b1 = tf.get_variable('b1', [n_hidden_3], trainable=trainable)
+#             h2 = tf.get_variable('h2', [n_hidden_3, n_hidden_2], trainable=trainable)
+#             b2 = tf.get_variable('b2', [n_hidden_2], trainable=trainable)
+#             h3 = tf.get_variable('h3', [n_hidden_2, n_hidden_1], trainable=trainable)
+#             b3 = tf.get_variable('b3', [n_hidden_1], trainable=trainable)
+#             h4 = tf.get_variable('h4', [n_hidden_1, n_input], trainable=trainable)
+#             b4 = tf.get_variable('b4', [n_input], trainable=trainable)
+#
+#             layer_1 = tf.nn.sigmoid(tf.add(tf.matmul(encoder_op, h1),
+#                                            b1))
+#             layer_2 = tf.nn.sigmoid(tf.add(tf.matmul(layer_1, h2),
+#                                            b2))
+#             layer_3 = tf.nn.sigmoid(tf.add(tf.matmul(layer_2, h3),
+#                                            b3))
+#             layer_4 = tf.add(tf.matmul(layer_3, h4),
+#                              b4)
+#             return layer_4
+#
+#     def encode(self,s):
+#
+#         return self.sess.run(self.encoder_op, {self.S: s})[0]
+#
+#
+#     def save_result(self, path):
+#         save_path = self.saver.save(self.sess, path + "/model.ckpt")
+#         print("Save to path: ", save_path)
+#     def load_result(self):
+#         self.saver.restore(self.sess, "autoencoder/model.ckpt")  # 1 0.1 0.5 0.001
+
+class VAE(object):
     def __init__(self, ):
+        tf.reset_default_graph()
         ###############################  Model parameters  ####################################
 
-        self.S = tf.placeholder(tf.float32, [None, 4], 's')
-        self.encoder_op = self.encoder(self.S)
-        self.decoder_op = self.decoder(self.encoder_op)
-        self.y_pred = self.decoder_op
-        # Targets (Labels) are the input data.
-        self.y_true = self.S
+        self.X_dim = 4
+        self.z_dim = 32
+        self.h_dim = 16
 
-        self.cost = tf.reduce_mean(tf.pow(self.y_true - self.y_pred, 2))
-        self.optimizer = tf.train.AdamOptimizer(0.0001).minimize(self.cost)
+        self.S = tf.placeholder(tf.float32, [None, self.X_dim], 's')
+        self.Z = tf.placeholder(tf.float32, [None, self.z_dim], 'z')
+        self.z_mu, self.z_logvar, distribution= self.encoder(self.S)
+
+
+
+        # Sampling latent after encoding
+        # z_sample = distribution.sample(self.num_of_z_samples)
+        z_sample = self.sample_z(self.z_mu, self.z_logvar)
+
+        x_mu, self.output_distribution = self.decoder(z_sample)
+
+        self.reconstruct_x, _ = self.decoder(self.z_mu, reuse=True)
+
+        self.recon_loss = tf.reduce_mean(tf.pow(x_mu - self.S , 2))
+
+        # D_KL(Q(z|X) || P(z)); calculate in closed form as both dist. are Gaussian
+        self.kl_loss = 0.5 * tf.reduce_mean(tf.exp(self.z_logvar) + self.z_mu ** 2 - 1. - self.z_logvar,1)
+
+        # self.kl_loss = self.wasserstein_distance(z_mu,z_logvar,mu,logvar)
+        # VAE loss
+        self.vae_loss = tf.reduce_mean(self.recon_loss + self.kl_loss)
+        self.optimizer = tf.train.AdamOptimizer(0.00001).minimize(self.vae_loss)
 
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
@@ -19,71 +124,59 @@ class autoencoder(object):
         self.opt = [self.optimizer]
 
     def learn(self, batch_xs):
-        _, c = self.sess.run([self.optimizer, self.cost], feed_dict={self.S: batch_xs})
-        return c
+        _, vae_loss,kl_loss,recon_loss = self.sess.run([self.optimizer, self.vae_loss,self.kl_loss,self.recon_loss], feed_dict={self.S: batch_xs})
+        return vae_loss,kl_loss,recon_loss
 
+    # =============================== Q(z|X) ======================================
     # critic模块
     def encoder(self, s, name='Encoder', reuse=None, custom_getter=None):
         trainable = True if reuse is None else False
         with tf.variable_scope(name, reuse=reuse, custom_getter=custom_getter):
-            n_input = 4
-            n_hidden_1 = 16
-            n_hidden_2 = 8
-            n_hidden_3 = 4
-            n_hidden_4 = 1
+            Q_W1 = tf.Variable(self.xavier_init([self.X_dim, self.h_dim]),trainable=trainable)
+            Q_b1 = tf.Variable(tf.zeros(shape=[self.h_dim]),trainable=trainable)
+            Q_W2_mu = tf.Variable(self.xavier_init([self.h_dim, self.z_dim]),trainable=trainable)
+            Q_b2_mu = tf.Variable(tf.zeros(shape=[self.z_dim]),trainable=trainable)
 
-            h1 = tf.get_variable('h1', [n_input, n_hidden_1], trainable=trainable)
-            b1 = tf.get_variable('b1', [n_hidden_1], trainable=trainable)
-            h2 = tf.get_variable('h2', [n_hidden_1, n_hidden_2], trainable=trainable)
-            b2 = tf.get_variable('b2', [n_hidden_2], trainable=trainable)
-            h3 = tf.get_variable('h3', [n_hidden_2, n_hidden_3], trainable=trainable)
-            b3 = tf.get_variable('b3', [n_hidden_3], trainable=trainable)
-            h4 = tf.get_variable('h4', [n_hidden_3, n_hidden_4], trainable=trainable)
-            b4 = tf.get_variable('b4', [n_hidden_4], trainable=trainable)
+            Q_W2_sigma = tf.Variable(self.xavier_init([self.h_dim, self.z_dim]),trainable=trainable)
+            Q_b2_sigma = tf.Variable(tf.zeros(shape=[self.z_dim]),trainable=trainable)
+            h = tf.nn.sigmoid(tf.matmul(s, Q_W1) + Q_b1)
+            z_mu = tf.matmul(h, Q_W2_mu) + Q_b2_mu
+            z_logvar = tf.matmul(h, Q_W2_sigma) + Q_b2_sigma
+            distribution = tfp.distributions.MultivariateNormalDiag(loc=z_mu, scale_diag=tf.exp(z_logvar))
+            return z_mu, z_logvar,distribution
 
-            layer_1 = tf.nn.sigmoid(tf.add(tf.matmul(s,h1),b1))
-            layer_2 = tf.nn.sigmoid(tf.add(tf.matmul(layer_1, h2),b2))
-            layer_3 = tf.nn.sigmoid(tf.add(tf.matmul(layer_2, h3),b3))
-            layer_4 = tf.nn.sigmoid(tf.add(tf.matmul(layer_3, h4),b4))
-            return layer_4
-
-    def decoder(self, encoder_op, name='Decoder', reuse=None, custom_getter=None):
+    # =============================== P(X|z) ======================================
+    def decoder(self, z, name='Decoder', reuse=None, custom_getter=None):
         trainable = True if reuse is None else False
         with tf.variable_scope(name, reuse=reuse, custom_getter=custom_getter):
-            n_input = 4
-            n_hidden_1 = 16
-            n_hidden_2 = 8
-            n_hidden_3 = 4
-            n_hidden_4 = 1
-            h1 = tf.get_variable('h1', [n_hidden_4, n_hidden_3], trainable=trainable)
-            b1 = tf.get_variable('b1', [n_hidden_3], trainable=trainable)
-            h2 = tf.get_variable('h2', [n_hidden_3, n_hidden_2], trainable=trainable)
-            b2 = tf.get_variable('b2', [n_hidden_2], trainable=trainable)
-            h3 = tf.get_variable('h3', [n_hidden_2, n_hidden_1], trainable=trainable)
-            b3 = tf.get_variable('b3', [n_hidden_1], trainable=trainable)
-            h4 = tf.get_variable('h4', [n_hidden_1, n_input], trainable=trainable)
-            b4 = tf.get_variable('b4', [n_input], trainable=trainable)
-
-            layer_1 = tf.nn.sigmoid(tf.add(tf.matmul(encoder_op, h1),
-                                           b1))
-            layer_2 = tf.nn.sigmoid(tf.add(tf.matmul(layer_1, h2),
-                                           b2))
-            layer_3 = tf.nn.sigmoid(tf.add(tf.matmul(layer_2, h3),
-                                           b3))
-            layer_4 = tf.add(tf.matmul(layer_3, h4),
-                             b4)
-            return layer_4
-
-    def encode(self,s):
-
-        return self.sess.run(self.encoder_op, {self.S: s})[0]
+            net_0 = tf.layers.dense(z, self.h_dim, activation=tf.nn.sigmoid, name='l1', trainable=trainable)  # 原始是30
+            mu = tf.layers.dense(net_0, self.X_dim, activation=None, name='a', trainable=trainable)
+            log_sigma = tf.layers.dense(net_0, self.X_dim, None, trainable=trainable)
+            distribution = tfp.distributions.MultivariateNormalDiag(loc=mu, scale_diag=tf.exp(log_sigma))
+            return mu, distribution
 
 
     def save_result(self, path):
         save_path = self.saver.save(self.sess, path + "/model.ckpt")
         print("Save to path: ", save_path)
+
+    def xavier_init(self,size):
+        in_dim = size[0]
+        xavier_stddev = 1. / tf.sqrt(in_dim / 2.)
+        return tf.random_normal(shape=size, stddev=xavier_stddev)
+
+    def sample_z(self, mu, log_var):
+        base_distribution = tfp.distributions.MultivariateNormalDiag(loc=tf.zeros(self.z_dim),
+                                                                     scale_diag=tf.ones(self.z_dim))
+        eps = base_distribution.sample(tf.shape(mu)[0])
+
+        return mu + tf.exp(log_var) * eps
+
     def load_result(self):
-        self.saver.restore(self.sess, "autoencoder/model.ckpt")  # 1 0.1 0.5 0.001
+        self.saver.restore(self.sess, "VAE/model.ckpt")  # 1 0.1 0.5 0.001
+
+    def encode(self,s):
+        return self.sess.run([self.z_mu, self.z_logvar], {self.S: s})
 
 
 import tensorflow as tf
@@ -103,13 +196,12 @@ SCALE_DIAG_MIN_MAX = (-20, 2)
 SCALE_lambda_MIN_MAX = (0, 50)
 
 
-
 SELF_LEARN=True
 class SCSAC(object):
     def __init__(self,
                  a_dim,
                  s_dim,
-
+                 vae_dim,
                  variant,
 
                  action_prior = 'uniform',
@@ -118,6 +210,7 @@ class SCSAC(object):
 
 
         ###############################  Model parameters  ####################################
+        tf.reset_default_graph()
         self.memory_capacity = variant['memory_capacity']
         self.cons_memory_capacity = variant['cons_memory_capacity']
         self.batch_size = variant['batch_size']
@@ -126,12 +219,12 @@ class SCSAC(object):
         self.approx_value = True if 'approx_value' not in variant.keys() else variant['approx_value']
         self.max_grad_norm = variant['max_grad_norm']
         self.memory = np.zeros((self.memory_capacity, s_dim * 2 + a_dim + 3), dtype=np.float32)
-        self.cons_memory = np.zeros((self.cons_memory_capacity, s_dim * 2 + a_dim + 4), dtype=np.float32)
+        self.cons_memory = np.zeros((self.cons_memory_capacity, s_dim * 2 + a_dim + 3+vae_dim), dtype=np.float32)
         self.pointer = 0
         self.cons_pointer = 0
         self.sess = tf.Session()
         self._action_prior = action_prior
-        self.a_dim, self.s_dim, = a_dim, s_dim,
+        self.a_dim, self.s_dim,self.vae_dim = a_dim, s_dim,vae_dim
         target_entropy = variant['target_entropy']
         if target_entropy is None:
             self.target_entropy = -self.a_dim  #lower bound of the policy entropy
@@ -140,7 +233,7 @@ class SCSAC(object):
 
         self.S = tf.placeholder(tf.float32, [None, s_dim], 's')
         self.S_ = tf.placeholder(tf.float32, [None, s_dim], 's_')
-        self.s_aec = tf.placeholder(tf.float32, [None, 1], 's_aec')
+        self.s_aec = tf.placeholder(tf.float32, [None, self.vae_dim ], 's_aec')
         self.cons_S = tf.placeholder(tf.float32, [None, s_dim], 's')
         self.cons_S_ = tf.placeholder(tf.float32, [None, s_dim], 's_')
         self.a_input = tf.placeholder(tf.float32, [None, a_dim], 'a_input')
@@ -260,7 +353,8 @@ class SCSAC(object):
             else:
                 l_target = self.l_R
 
-            self.distribution_loss = -tf.reduce_mean(self.distribution.prob(self.s_aec))
+            # self.distribution_loss = -tf.reduce_mean(self.distribution.prob(self.s_aec))
+            self.distribution_loss = -tf.reduce_mean(self.distribution.log_prob(self.s_aec))
 
 
             self.d_trainer = tf.train.AdamOptimizer(self.LR_C)
@@ -344,7 +438,7 @@ class SCSAC(object):
                 cons_ba = bt[:, self.s_dim: self.s_dim + self.a_dim]
                 cons_bs_ = bt[:, self.s_dim + self.a_dim+3:2*self.s_dim + self.a_dim+3]
                 cons_blr = bt[:, self.s_dim + self.a_dim+1:  self.s_dim + self.a_dim+2]
-                cons_bsaec= bt[:, 2*self.s_dim + self.a_dim+3:  2*self.s_dim + self.a_dim+4]
+                cons_bsaec= bt[:, 2*self.s_dim + self.a_dim+3:  2*self.s_dim + self.a_dim+3+self.vae_dim]
 
                 feed_dict.update({self.cons_a_input: cons_ba, self.cons_S: cons_bs, self.cons_S_: cons_bs_,
                                   self.cons_l_R: cons_blr,self.s_aec:cons_bsaec})
@@ -389,8 +483,8 @@ class SCSAC(object):
             base_distribution = tfp.distributions.MultivariateNormalDiag(loc=tf.zeros(self.a_dim), scale_diag=tf.ones(self.a_dim))
             epsilon = base_distribution.sample(batch_size)
             ## Construct the feedforward action
-            net_0 = tf.layers.dense(s, 256, activation=tf.nn.relu, name='l1', trainable=trainable)#原始是30
-            net_1 = tf.layers.dense(net_0, 256, activation=tf.nn.relu, name='l4', trainable=trainable)  # 原始是30
+            net_0 = tf.layers.dense(s, 64, activation=tf.nn.relu, name='l1', trainable=trainable)#原始是30
+            net_1 = tf.layers.dense(net_0, 64, activation=tf.nn.relu, name='l4', trainable=trainable)  # 原始是30
             mu = tf.layers.dense(net_1, self.a_dim, activation= None, name='a', trainable=trainable)
             log_sigma = tf.layers.dense(net_1, self.a_dim, None, trainable=trainable)
             log_sigma = tf.clip_by_value(log_sigma, *SCALE_DIAG_MIN_MAX)
@@ -446,11 +540,20 @@ class SCSAC(object):
         trainable = True if reuse is None else False
         with tf.variable_scope(name, reuse=reuse, custom_getter=custom_getter):
             # x_a = tf.get_variable('x_a',[1, self.s_dim+self.a_dim] , trainable=trainable)
-            x_ade = tf.get_variable('x_a', initializer=tf.constant([[0.5]], dtype=tf.float32), trainable=trainable)
-            # x_ade = tf.get_variable('x_a',[1, 1] , trainable=trainable)
-            sig = tf.get_variable('sig', [1, 1], trainable=trainable)
+            # x_ade = tf.get_variable('x_a', initializer=tf.constant([[0.5]], dtype=tf.float32), trainable=trainable)
+            x_ade = tf.get_variable('x_a',[1,32] , trainable=trainable)
+            sig = tf.get_variable('sig', [1,32], trainable=trainable)
             distribution = tfp.distributions.MultivariateNormalDiag(loc=x_ade, scale_diag=sig)
             return distribution
+    # def _build_sample(self, name='sample', reuse=None, custom_getter=None):
+    #     trainable = True if reuse is None else False
+    #     with tf.variable_scope(name, reuse=reuse, custom_getter=custom_getter):
+    #         # x_a = tf.get_variable('x_a',[1, self.s_dim+self.a_dim] , trainable=trainable)
+    #         x_ade = tf.get_variable('x_a', initializer=tf.constant([[0.5]], dtype=tf.float32), trainable=trainable)
+    #         # x_ade = tf.get_variable('x_a',[1, 1] , trainable=trainable)
+    #         sig = tf.get_variable('sig', [1, 1], trainable=trainable)
+    #         distribution = tfp.distributions.MultivariateNormalDiag(loc=x_ade, scale_diag=sig)
+    #         return distribution
 
 
     def save_result(self, path):
@@ -461,12 +564,13 @@ def wasserstein_distance(m1,o1,m2,o2):
     o1=np.array(o1)
     o2=np.array(o2)
     dis_part1 = np.linalg.norm(m1 - m2) ** 2
-
     dis_part2 = np.trace(o1 + o2 - 2 * np.sqrt(np.dot(np.dot(np.sqrt(o2), o1), np.sqrt(o2))))
     return dis_part1+dis_part2
 def train(variant):
-    auto_low = 0.0001
-    aec = autoencoder()
+    auto_low = 0.01
+    # aec = autoencoder()
+    # aec.load_result()
+    aec = VAE()
     aec.load_result()
     env_name = variant['env_name']
     env = get_env_from_name(env_name)
@@ -506,7 +610,7 @@ def train(variant):
     a_dim = env.action_space.shape[0]
     a_upperbound = env.action_space.high
     a_lowerbound = env.action_space.low
-    policy = policy_build_fn(a_dim, s_dim, policy_params)
+    policy = policy_build_fn(a_dim, s_dim,32, policy_params)
     logger.logkv('target_entropy', policy.target_entropy)
     # For analyse
 
@@ -521,7 +625,7 @@ def train(variant):
     last_training_paths = deque(maxlen=store_last_n_paths)
     training_started = False
     for i in range(max_episodes):
-
+        awd=0
         ep_reward = 0
         l_r = 0
 
@@ -549,18 +653,21 @@ def train(variant):
 
             mu_bad, sigma_bad = policy.get_distribution()
             # mu_now=np.concatenate((s,a))
-            mu_now = aec.encode([s_])
+            mu_now,sigma_now= aec.encode([s_])
 
-            # sigma_now=np.eye(s_dim+a_dim)*0.01
-            sigma_now = 0
+            mu_now=mu_now[0]
+            sigma_now=np.eye(32)* ( np.exp(sigma_now[0]) **2)
+            # print(np.shape(mu_now),np.shape(mu_bad),np.shape(sigma_now),np.shape(sigma_bad))
             # print(mu_now,[[sigma_now]],mu_bad,sigma_bad)
-            wd = wasserstein_distance(mu_now, [[sigma_now]], mu_bad, sigma_bad)  #
-            # print(wd)
-
-            l_r = max(0.01 / wd - 1, 0)
+            wd = wasserstein_distance(mu_now, sigma_now, mu_bad, sigma_bad)  #
+            awd=awd+wd
+            # if i>100:
+            #     print(wd)
+            l_r = 100*max(30/ wd - 1, 0)
 
             if not SELF_LEARN:
                 l_r = info['l_rewards']
+                # l_r = 0
 
             if j == max_ep_steps - 1:
                 done = True
@@ -573,9 +680,9 @@ def train(variant):
             # 如果状态接近边缘 就存储到边缘memory里
             # if policy.use_lyapunov is True and np.abs(s[0]) > env.cons_pos:  # or np.abs(s[2]) > env.theta_threshold_radians*0.8
             if policy.use_lyapunov is True and judge_safety_func(s_, r, done, info):  # or np.abs(s[2]) > env.theta_threshold_radians*0.8
-                s_aec = aec.encode([s_])
+                s_aec,_ = aec.encode([s_])
                 s_bad_for_autoencoder.append(s_.tolist())
-                policy.store_edge_transition(s, a, r, l_r, terminal, s_,s_aec)
+                policy.store_edge_transition(s, a, r, l_r, terminal, s_,s_aec[0])
 
             # Learn
             if policy.use_lyapunov is True:
@@ -640,7 +747,8 @@ def train(variant):
                           'alpha:', round(training_diagnotic['alpha'], 6),
                           'lambda:', round(training_diagnotic['labda'], 6),
                           'entropy:', round(training_diagnotic['entropy'], 6),
-                          'distribution_loss', training_diagnotic['distribution_loss']
+                          'distribution_loss', training_diagnotic['distribution_loss'],
+                          'Average WD',awd/(j+1)
                           )
                           # 'max_grad:', round(training_diagnotic['max_grad'], 6)
                 logger.dumpkvs()
@@ -663,7 +771,7 @@ def train(variant):
 
                 s_for_autoencoder=np.concatenate((s_bad_for_autoencoder,s_normal_for_autoencoder))
 
-                c = aec.learn(s_for_autoencoder)
+                c,_,_ = aec.learn(s_for_autoencoder)
                 if c < auto_low:
                     auto_low = c
                     print(c)
